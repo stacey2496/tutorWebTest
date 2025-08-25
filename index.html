@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <title>My Travel Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  
+  <style>
+    body { font-family: Arial, sans-serif; }
+    .packages_box { 
+        margin-bottom: 30px; 
+        border: 1px solid #ddd; 
+        border-radius: 8px; 
+        overflow: hidden; 
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* 新增陰影讓卡片更突出 */
+    }
+    /* 確保所有圖片都填滿容器且不變形 */
+    .packages_box figure img { 
+        width: 100%; 
+        height: 250px; 
+        object-fit: cover; 
+        transition: transform 0.3s ease; /* 增加過渡效果 */
+    }
+    .packages_box:hover figure img {
+        transform: scale(1.05); /* 鼠標懸停時放大 */
+    }
+    .tuscany { padding: 15px; }
+    .tusc { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .italy h3 { margin: 0; font-size: 20px; }
+    .italy span { font-size: 14px; color: #555; }
+    .italy_right h3 { margin: 0; font-size: 16px; color: #555; }
+    .italy_right span { font-weight: bold; color: #f00; font-size: 20px; }
+    .read_more { margin-right: 10px; color: #007bff; cursor: pointer; text-decoration: none; }
+    .read_more:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<header class="bg-dark text-white text-center py-4">
+  <h1>旅遊英語家教</h1>
+  <p class="lead">探索世界的角落</p>
+</header>
+
+<section class="blog py-5">
+  <div class="container">
+    <h2 class="text-center mb-4">家教方案</h2>
+    <div class="row" id="blog-list">
+      <div class="col-12 text-center" id="loading-message">
+        <p>資料讀取中，請稍候...</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="bg-light text-center py-3 mt-5">
+  <p>&copy; 2025 My Travel Blog. All rights reserved.</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<script>
+  // ====================================================================
+  // 【重要設定】請確保此連結為你的 Google 試算表公開 CSV 連結
+  // ====================================================================
+  const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8d6dVx369KZp5-VpeYbIdU4J_wG-Jk1IJCyyhC4v-KC3yJkGveHqP4iUfQIKP8q0D7woxzljIWSih/pub?gid=0&single=true&output=csv";
+  
+  const blogList = document.getElementById("blog-list");
+
+  // 1. 建立單個部落格卡片的函式 (結合了物件屬性和 DOM 字串模板)
+  // 接收從試算表讀取的五個欄位資料
+  function createBlogCard(title, country, price, content, imageUrl){
+    // 設定預設圖片，以防試算表沒有提供圖片連結
+    const defaultImage = "https://picsum.photos/600/400?random=1";
+    const finalImageUrl = imageUrl && imageUrl.startsWith('http') ? imageUrl : defaultImage;
+    
+    return `
+      <div class="col-md-6">
+        <div class="packages_box">
+          <figure><img src="${finalImageUrl}" alt="${title}"></figure>
+<div style="font-size: 10px; color: blue; word-break: break-all;">
+    讀取到的連結：${finalImageUrl}
+</div>
+          <div class="tuscany">
+            <div class="tusc text_align_left">
+              <div class="italy">
+                <h3>${title}</h3>
+                <span><img src="https://cdn-icons-png.flaticon.com/512/820/820798.png" width="16"/> ${country}</span>
+              </div>
+              <div class="italy_right">
+                <h3>價格</h3>
+                <span>${price}</span>
+              </div>
+            </div>
+            <p>${content}</p>
+            <div class="tusc">
+              <a class="read_more">詳細介紹</a>
+              <a class="read_more">立即預訂</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // 2. 讀取並解析 CSV 資料
+  Papa.parse(CSV_URL, {
+    download: true,
+    header: false,
+    skipEmptyLines: true,
+    complete: function(results) {
+      // 移除載入中的訊息
+      const loadingMessage = document.getElementById('loading-message');
+      if(loadingMessage) {
+          loadingMessage.remove();
+      }
+
+      const rows = results.data;
+      if (rows.length <= 1) {
+          blogList.innerHTML = '<p class="col-12 text-center">試算表中沒有找到任何文章。</p>';
+          return;
+      }
+      
+      // 3. 使用迴圈遍歷資料並生成 HTML
+      for(let i=1; i<rows.length; i++){ // 從第2列開始 (索引 1)
+        let r = rows[i];
+        if(!r || r.length < 6) continue; // 確保有足夠的欄位 (至少到 F 欄)
+        
+        let title   = r[1] || "無標題";   // B欄 (索引 1)
+        let country = r[2] || "未知地點"; // C欄 (索引 2)
+        let price   = r[3] || "N/A";      // D欄 (索引 3)
+        let content = r[4] || "無內容";   // E欄 (索引 4)
+        let imageUrl= r[5] || "";         // F欄 (索引 5) (圖片連結)
+
+        // 4. 將生成的卡片 HTML 內容加到 #blog-list 容器中
+        blogList.innerHTML += createBlogCard(title, country, price, content, imageUrl);
+      }
+    },
+    error: function(error) {
+        // 處理網路或解析錯誤
+        const loadingMessage = document.getElementById('loading-message');
+        if(loadingMessage) {
+             loadingMessage.innerHTML = '<p style="color: red;">載入資料失敗。請檢查您的網路或 CSV 連結是否公開。</p>';
+        }
+        console.error("PapaParse Error:", error);
+    }
+  });
+</script>
+</body>
+</html>
